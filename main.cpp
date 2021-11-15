@@ -2,7 +2,7 @@
 #include <vector>
 #include <list>
 #include <cmath>
-
+#include <fstream>
 using namespace std;
 
 
@@ -12,9 +12,9 @@ public:
     double y ;
     double z;
     vect(){
-        x = 0.0;
-        y = 0.0;
-        z = 0.0;
+        x = -1e8;
+        y = -1e8;
+        z = -1e8;
     }
     vect(double x_, double y_, double z_){
         x = x_;
@@ -54,32 +54,30 @@ double dist(vect v1, vect v2){
 
 class triangle{
 public:
-    vect point1, point2, point3;
+    int point1, point2, point3;
     triangle(){
-        vect p0(0, 0, 0);
-        point1 = p0;
-        point2 = p0;
-        point3 = p0;
+        point1 = -1;
+        point2 = -1;
+        point3 = -1;
     }
-    triangle(vect point1_, vect point2_, vect point3_){
+    triangle(int point1_, int point2_, int point3_){
         point1 = point1_;
         point2 = point2_;
         point3 = point3_;
     }
-    double get_area(){
-        return abs(vectorProduct(point2 - point1, point3 - point1).get_length()) * 0.5;
-    }
 
 };
 int main(){
+    ofstream out ("output.txt");
 //    vect p1(0, 0, 0);
 //    vect p2(0, 0, 0);
 //    vect p3(0, 0, 0);
 //    triangle tr(p1, p2, p3);
+
     int N = 100;
     vector<vect> contour(N);
     for(int i = 0; i < N; i++){
-        vect p(cos(i  / double(N) * 2 * 3.14159), sin(i  / double(N) * 2 * 3.14159), 0);
+        vect p(cos(i  / double(N) * 2 * 3.14159), sin(i  / double(N) * 2 * 3.14159), 0.2 * sin(i / double(N) * 8 * 2 * 3.14159));
         contour[i] = p;
     }
     double mean_x = 0.0, mean_y = 0.0, mean_z = 0.0;
@@ -129,14 +127,30 @@ int main(){
         int i0 = point_ind;
         cout << cur_N << '\n';
         while(point_ind < stop){
-            if(point_ind % checkN != 0 || point_ind >= stop - 2){
+            if(point_ind + 1 == stop){
+                int point_ind2 = i0;
+                points[point_ind + cur_N] = alpha * points[point_ind];
+                points[point_ind2 + cur_N + deleted] = alpha * points[point_ind2];
+                triangle tr1(point_ind, point_ind2, point_ind2 + cur_N + deleted);
+                triangle tr2(point_ind, point_ind + cur_N, point_ind2 + cur_N + deleted);
+                triangles[triangle_ind] = tr1;
+                triangles[triangle_ind + 1] = tr2;
+                pointTriangles[point_ind].push_back(triangle_ind);
+                pointTriangles[point_ind].push_back(triangle_ind + 1);
+                pointTriangles[point_ind2].push_back(triangle_ind + 1);
+                pointTriangles[point_ind + cur_N].push_back(triangle_ind);
+                pointTriangles[point_ind2 + cur_N + deleted].push_back(triangle_ind);
+                pointTriangles[point_ind2 + cur_N + deleted].push_back(triangle_ind + 1);
+                point_ind += 1;
+                triangle_ind += 2;
+            }
+            else if(point_ind % checkN != 0 || point_ind >= stop - 2){
+                //cout << "no" << " " << point_ind << '\n';
                 int point_ind2 = point_ind + 1;
-                if(point_ind + 1 == stop)
-                    point_ind2 = i0;
                 points[point_ind + cur_N] = alpha * points[point_ind];
                 points[point_ind2 + cur_N] = alpha * points[point_ind2];
-                triangle tr1(points[point_ind], points[point_ind2], points[point_ind2 + cur_N]);
-                triangle tr2(points[point_ind], points[point_ind + cur_N], points[point_ind2 + cur_N]);
+                triangle tr1(point_ind, point_ind2, point_ind2 + cur_N);
+                triangle tr2(point_ind, point_ind + cur_N, point_ind2 + cur_N);
                 triangles[triangle_ind] = tr1;
                 triangles[triangle_ind + 1] = tr2;
                 pointTriangles[point_ind].push_back(triangle_ind);
@@ -150,11 +164,15 @@ int main(){
             }
             else{
                 deleted++;
+                //cout << "yes" << " " << point_ind << '\n';
                 points[point_ind + cur_N] = alpha * points[point_ind];
                 points[point_ind + cur_N + 1] = alpha * points[point_ind + 2];
-                triangle tr1(points[point_ind], points[point_ind + 1], points[point_ind + cur_N]);
-                triangle tr2(points[point_ind + cur_N], points[point_ind + 1], points[point_ind + cur_N + 1]);
-                triangle tr3(points[point_ind], points[point_ind + 1], points[point_ind + cur_N]);
+                triangle tr1(point_ind, point_ind + 1, point_ind + cur_N);
+                triangle tr2(point_ind + cur_N, point_ind + 1, point_ind + cur_N + 1);
+                triangle tr3(point_ind + 1, point_ind + 2, point_ind + cur_N + 1);
+                triangles[triangle_ind] = tr1;
+                triangles[triangle_ind + 1] = tr2;
+                triangles[triangle_ind + 2] = tr3;
                 pointTriangles[point_ind].push_back(triangle_ind);
                 pointTriangles[point_ind + 1].push_back(triangle_ind);
                 pointTriangles[point_ind + 1].push_back(triangle_ind + 1);
@@ -166,16 +184,17 @@ int main(){
                 pointTriangles[point_ind + cur_N + 1].push_back(triangle_ind + 2);
                 point_ind += 2;
                 triangle_ind += 3;
+                cur_N--;
             }
         }
-        cur_N -= deleted;
+        //cur_N -= deleted;
         meanDist *= alpha;
     }
     //last step - connect all remain points with centre
     points[point_ind + cur_N] = vect(0, 0, 0);
     int stop = point_ind + cur_N, i0 = point_ind;
     while(point_ind < stop - 1){
-        triangle tr(points[point_ind], points[point_ind + 1], points[stop]);
+        triangle tr(point_ind, point_ind + 1, stop);
         triangles[triangle_ind] = tr;
         pointTriangles[point_ind].push_back(triangle_ind);
         pointTriangles[point_ind + 1].push_back(triangle_ind);
@@ -183,14 +202,27 @@ int main(){
         triangle_ind += 1;
         point_ind += 1;
     }
-    triangle tr(points[point_ind], points[i0], points[stop]);
+    triangle tr(point_ind, i0, stop);
     triangles[triangle_ind] = tr;
     pointTriangles[point_ind].push_back(triangle_ind);
     pointTriangles[point_ind + 1].push_back(triangle_ind);
     pointTriangles[stop].push_back(triangle_ind);
     cout << triangle_ind << '\n';
-
      //first triangulation now is done
+    // let's write data
+    int ind = 0;
+    while(points[ind].x != -1e8){
+        out << points[ind].x << " " <<  points[ind].y << " "  << points[ind].z << " ";
+        cout << ind << '\n';
+        ind++;
+    }
+    out << '\n';
+    ind = 0;
+    while(triangles[ind].point1 != -1){
+        out << triangles[ind].point1 << " " << triangles[ind].point2 << " " << triangles[ind].point3 << " ";
+        ind++;
+    }
+    out.close();
 
     return 0;
 }
