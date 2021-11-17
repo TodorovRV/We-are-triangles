@@ -65,8 +65,15 @@ public:
         point2 = point2_;
         point3 = point3_;
     }
-
 };
+
+double get_area(triangle tr, vector<vect> &points){
+    vect point1 = points[tr.point1];
+    vect point2 = points[tr.point2];
+    vect point3 = points[tr.point3];
+    return abs(vectorProduct(point1-point2, point1-point3).get_length())/2;
+}
+
 int main(){
     ofstream out ("output.txt");
 //    vect p1(0, 0, 0);
@@ -208,21 +215,186 @@ int main(){
     pointTriangles[point_ind + 1].push_back(triangle_ind);
     pointTriangles[stop].push_back(triangle_ind);
     cout << triangle_ind << '\n';
-     //first triangulation now is done
+    //first triangulation now is done
     // let's write data
+
     int ind = 0;
+    while(triangles[ind].point1 != -1){
+        out << triangles[ind].point1 << " " << triangles[ind].point2 << " " << triangles[ind].point3 << " ";
+        ind++;
+    }
+    out.close();
+
+    int num_of_points = point_ind+1;
+    int num_of_triangles = triangle_ind;
+
+    //here we do minimisation
+
+    for (int iteration = 0; iteration < 10; iteration++) {
+        for (int node_id = 0; node_id < num_of_points; node_id++) {
+            double current_surf = 0.;
+            for (int it: pointTriangles[node_id]) {
+                current_surf += get_area(triangles[it], points);
+            }
+            double l = 1000.;
+            bool flag = true;
+            while (flag and l > 0.0001) {
+                double x_pl_new = points[node_id].x + l;
+                double x_min_new = points[node_id].x - l;
+
+                vect node_pl_new(x_pl_new, points[node_id].y, points[node_id].z);
+                vect node_min_new(x_min_new, points[node_id].y, points[node_id].z);
+
+                points[num_of_points] = node_pl_new;
+                points[num_of_points + 1] = node_min_new;
+
+                double surf_pl_new = 0.;
+                double surf_min_new = 0.;
+
+                for (int it: pointTriangles[node_id]) {
+                    if (triangles[it].point1 == node_id) {
+                        triangle t1(num_of_points, triangles[it].point2, triangles[it].point3);
+                        surf_pl_new += get_area(t1, points);
+                        triangle t2(num_of_points+1, triangles[it].point2, triangles[it].point3);
+                        surf_min_new += get_area(t2, points);
+                    } else if (triangles[it].point2 == node_id){
+                        triangle t1(triangles[it].point1, num_of_points, triangles[it].point3);
+                        surf_pl_new += get_area(t1, points);
+                        triangle t2(triangles[it].point1, num_of_points+1, triangles[it].point3);
+                        surf_min_new += get_area(t2, points);
+                    } else if (triangles[it].point3 == node_id){
+                        triangle t1(triangles[it].point1, triangles[it].point2, num_of_points);
+                        surf_pl_new += get_area(t1, points);
+                        triangle t2(triangles[it].point1, triangles[it].point2, num_of_points+1);
+                        surf_min_new += get_area(t2, points);
+                    }
+                }
+
+                if (surf_pl_new < surf_min_new) {
+                    if (surf_pl_new < current_surf) {
+                        points[node_id].x = x_pl_new;
+                        current_surf = surf_pl_new;
+                        flag = false;
+                    }
+                } else {
+                    if (surf_min_new < current_surf) {
+                        points[node_id].x = x_min_new;
+                        current_surf = surf_min_new;
+                        flag = false;
+                    }
+                }
+                l /= 2;
+            }
+
+
+            l = 1000.;
+            flag = true;
+            while (flag and l > 0.0001) {
+                double y_pl_new = points[node_id].y + l;
+                double y_min_new = points[node_id].y - l;
+
+                vect node_pl_new(points[node_id].x, y_pl_new, points[node_id].z);
+                vect node_min_new(points[node_id].x, y_min_new, points[node_id].z);
+
+                points[num_of_points] = node_pl_new;
+                points[num_of_points + 1] = node_min_new;
+
+                double surf_pl_new = 0.;
+                double surf_min_new = 0.;
+
+                for (int it: pointTriangles[node_id]) {
+                    if (triangles[it].point1 == node_id) {
+                        triangle t1(num_of_points, triangles[it].point2, triangles[it].point3);
+                        surf_pl_new += get_area(t1, points);
+                        triangle t2(num_of_points+1, triangles[it].point2, triangles[it].point3);
+                        surf_min_new += get_area(t2, points);
+                    } else if (triangles[it].point2 == node_id){
+                        triangle t1(triangles[it].point1, num_of_points, triangles[it].point3);
+                        surf_pl_new += get_area(t1, points);
+                        triangle t2(triangles[it].point1, num_of_points+1, triangles[it].point3);
+                        surf_min_new += get_area(t2, points);
+                    } else if (triangles[it].point3 == node_id){
+                        triangle t1(triangles[it].point1, triangles[it].point2, num_of_points);
+                        surf_pl_new += get_area(t1, points);
+                        triangle t2(triangles[it].point1, triangles[it].point2, num_of_points+1);
+                        surf_min_new += get_area(t2, points);
+                    }
+                }
+
+                if (surf_pl_new < surf_min_new) {
+                    if (surf_pl_new < current_surf) {
+                        points[node_id].y = y_pl_new;
+                        current_surf = surf_pl_new;
+                        flag = false;
+                    }
+                } else {
+                    if (surf_min_new < current_surf) {
+                        points[node_id].y = y_min_new;
+                        current_surf = surf_min_new;
+                        flag = false;
+                    }
+                }
+                l /= 2;
+            }
+
+
+            l = 1000.;
+            flag = true;
+            while (flag and l > 0.0001) {
+                double z_pl_new = points[node_id].z + l;
+                double z_min_new = points[node_id].z - l;
+
+                vect node_pl_new(points[node_id].x, points[node_id].y, z_pl_new);
+                vect node_min_new(points[node_id].x, points[node_id].y, z_min_new);
+
+                points[num_of_points] = node_pl_new;
+                points[num_of_points + 1] = node_min_new;
+
+                double surf_pl_new = 0.;
+                double surf_min_new = 0.;
+
+                for (int it: pointTriangles[node_id]) {
+                    if (triangles[it].point1 == node_id) {
+                        triangle t1(num_of_points, triangles[it].point2, triangles[it].point3);
+                        surf_pl_new += get_area(t1, points);
+                        triangle t2(num_of_points+1, triangles[it].point2, triangles[it].point3);
+                        surf_min_new += get_area(t2, points);
+                    } else if (triangles[it].point2 == node_id){
+                        triangle t1(triangles[it].point1, num_of_points, triangles[it].point3);
+                        surf_pl_new += get_area(t1, points);
+                        triangle t2(triangles[it].point1, num_of_points+1, triangles[it].point3);
+                        surf_min_new += get_area(t2, points);
+                    } else if (triangles[it].point3 == node_id){
+                        triangle t1(triangles[it].point1, triangles[it].point2, num_of_points);
+                        surf_pl_new += get_area(t1, points);
+                        triangle t2(triangles[it].point1, triangles[it].point2, num_of_points+1);
+                        surf_min_new += get_area(t2, points);
+                    }
+                }
+
+                if (surf_pl_new < surf_min_new) {
+                    if (surf_pl_new < current_surf) {
+                        points[node_id].z = z_pl_new;
+                        flag = false;
+                    }
+                } else {
+                    if (surf_min_new < current_surf) {
+                        points[node_id].z = z_min_new;
+                        flag = false;
+                    }
+                }
+                l /= 2;
+            }
+        }
+
+    }
+    ind = 0;
     while(points[ind].x != -1e8){
         out << points[ind].x << " " <<  points[ind].y << " "  << points[ind].z << " ";
         cout << ind << '\n';
         ind++;
     }
     out << '\n';
-    ind = 0;
-    while(triangles[ind].point1 != -1){
-        out << triangles[ind].point1 << " " << triangles[ind].point2 << " " << triangles[ind].point3 << " ";
-        ind++;
-    }
-    out.close();
 
     return 0;
 }
