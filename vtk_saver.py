@@ -1,7 +1,8 @@
 import vtk
 from matplotlib import pyplot as plt
 
-def make_snapshot(points, triangles):
+
+def make_snapshot(points, triangles, j):
     unstructuredGrid = vtk.vtkUnstructuredGrid()
     vtk_points = vtk.vtkPoints()
     for i in range(int(len(points) / 3)):
@@ -18,27 +19,28 @@ def make_snapshot(points, triangles):
         unstructuredGrid.InsertNextCell(tr.GetCellType(), tr.GetPointIds())
     writer = vtk.vtkXMLUnstructuredGridWriter()
     writer.SetInputDataObject(unstructuredGrid)
-    writer.SetFileName("test" + ".vtu")
+    writer.SetFileName("Snapshots/surface" + str(j) + ".vtu")
     writer.Write()
 
 
 points = [0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0]
 triangles = [0, 1, 2, 2, 1, 3]
-
-with open('cmake-build-debug/output.txt') as f:
-    calc_points = list(map(float, f.readline().split()))
+calc_points = []
+with open('output.txt') as f:
     calc_triangles = list(map(int, f.readline().split()))
+    iterations = int(f.readline())
+    for i in range(iterations):
+        calc_points.append(list(map(float, f.readline().split())))
+# x = []
+# y = []
+# for i in range(int(len(calc_points) / 3)):
+#     x.append(calc_points[i * 3])
+#     y.append(calc_points[i * 3 + 1])
+# plt.scatter(x, y)
+# plt.show()
 print(len(calc_points))
-for i in range(int(len(calc_triangles) / 3)):
-    print(calc_triangles[i * 3], calc_triangles[i * 3 + 1], calc_triangles[i * 3 + 2])
-x = []
-y = []
-for i in range(int(len(calc_points) / 3)):
-    x.append(calc_points[i * 3])
-    y.append(calc_points[i * 3 + 1])
-plt.scatter(x, y)
-plt.show()
-make_snapshot(calc_points, calc_triangles)
+for i in range(len(calc_points)):
+    make_snapshot(calc_points[i], calc_triangles, i)
 #make_snapshot(points, triangles)
 
 
